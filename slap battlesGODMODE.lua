@@ -1,0 +1,151 @@
+﻿-- Script taken from https://xenoscripts.com website --
+
+-- ===== Universal Fly Script (R6/R15 Safe) =====
+-- Toggle: F
+-- Move: W A S D
+-- Ascend: Space | Descend: LeftControl
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Camera = workspace.CurrentCamera
+
+local player = Players.LocalPlayer
+local char = player.Character or player.CharacterAdded:Wait()
+local humanoid = char:FindFirstChildOfClass("Humanoid")
+local hrp = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
+
+-- Settings
+local TOGGLE_KEY = Enum.KeyCode.F
+local Speed = 80
+local VerticalSpeed = 60
+local MaxForce = 1e5
+local AutoAnchor = false
+
+-- Internal state
+local Active = false
+local bv, bg
+local conn
+local input = { fwd=false, back=false, left=false, right=false, up=false, down=false }
+
+local function ensureParts()
+    if not char or not char.Parent then
+        char = player.Character or player.CharacterAdded:Wait()
+    end
+    humanoid = char:FindFirstChildOfClass("Humanoid")
+    hrp = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
+    return hrp ~= nil
+end
+
+local function destroyControllers()
+    if bv and bv.Parent then pcall(function() bv:Destroy() end) end
+    if bg and bg.Parent then pcall(function() bg:Destroy() end) end
+    if hrp and AutoAnchor then
+        pcall(function() hrp.Anchored = false end)
+    end
+    bv = nil; bg = nil
+end
+
+local function createControllers()
+    if not ensureParts() then return end
+    destroyControllers()
+    if AutoAnchor then
+        pcall(function() hrp.Anchored = true end)
+        return
+    end
+    bv = Instance.new("BodyVelocity")
+    bv.MaxForce = Vector3.new(MaxForce, MaxForce, MaxForce)
+    bv.P = 2000
+    bv.Parent = hrp
+
+    bg = Instance.new("BodyGyro")
+    bg.MaxTorque = Vector3.new(MaxForce, MaxForce, MaxForce)
+    bg.P = 3000
+    bg.Parent = hrp
+end
+
+local function getMoveVector()
+    local mv = Vector3.new(0,0,0)
+    if not Camera then return mv end
+    local look = Camera.CFrame.LookVector
+    local right = Camera.CFrame.RightVector
+    if input.fwd then mv = mv + Vector3.new(look.X, 0, look.Z) end
+    if input.back then mv = mv - Vector3.new(look.X, 0, look.Z) end
+    if input.right then mv = mv + Vector3.new(right.X, 0, right.Z) end
+    if input.left then mv = mv - Vector3.new(right.X, 0, right.Z) end
+    if mv.Magnitude > 0 then mv = mv.Unit end
+    return mv
+end
+
+local function startHeartbeat()
+    if conn then conn:Disconnect() end
+    conn = RunService.Heartbeat:Connect(function()
+        if not Active then return end
+        if not ensureParts() then return end
+        if bg and bv then
+            bg.CFrame = CFrame.new(hrp.Position, hrp.Position + Vector3.new(Camera.CFrame.LookVector.X, 0, Camera.CFrame.LookVector.Z))
+            local mv = getMoveVector()
+            local horiz = mv * Speed
+            local vy = 0
+            if input.up then vy = VerticalSpeed end
+            if input.down then vy = -VerticalSpeed end
+            bv.Velocity = Vector3.new(horiz.X, vy, horiz.Z)
+        end
+    end)
+end
+
+local function stopHeartbeat()
+    if conn then conn:Disconnect() conn = nil end
+end
+
+local function enableFly()
+    if Active then return end
+    if not ensureParts() then return end
+    Active = true
+    if humanoid then pcall(function() humanoid.PlatformStand = true end) end
+    createControllers()
+    startHeartbeat()
+end
+
+local function disableFly()
+    if not Active then return end
+    Active = false
+    stopHeartbeat()
+    destroyControllers()
+    if humanoid then pcall(function() humanoid.PlatformStand = false end) end
+end
+
+-- Input handlers
+UserInputService.InputBegan:Connect(function(io, gp)
+    if gp then return end
+    local kc = io.KeyCode
+    if kc == TOGGLE_KEY then
+        if Active then disableFly() else enableFly() end
+    end
+    if kc == Enum.KeyCode.W then input.fwd = true end
+    if kc == Enum.KeyCode.S then input.back = true end
+    if kc == Enum.KeyCode.A then input.left = true end
+    if kc == Enum.KeyCode.D then input.right = true end
+    if kc == Enum.KeyCode.Space then input.up = true end
+    if kc == Enum.KeyCode.LeftControl then input.down = true end
+end)
+
+UserInputService.InputEnded:Connect(function(io, gp)
+    if gp then return end
+    local kc = io.KeyCode
+    if kc == Enum.KeyCode.W then input.fwd = false end
+    if kc == Enum.KeyCode.S then input.back = false end
+    if kc == Enum.KeyCode.A then input.left = false end
+    if kc == Enum.KeyCode.D then input.right = false end
+    if kc == Enum.KeyCode.Space then input.up = false end
+    if kc == Enum.KeyCode.LeftControl then input.down = false end
+end)
+
+-- Cleanup
+player.CharacterRemoving:Connect(function() disableFly() end)
+player.CharacterAdded:Connect(function(c) char = c ensureParts() end)
+
+print("[Universal Fly] Loaded. Press '"..tostring(TOGGLE_KEY.Name).."' to toggle fly.")
+--[[
+	WARNING: Heads up! This script has not been verified by ScriptBlox. Use at your own risk!
+]]
